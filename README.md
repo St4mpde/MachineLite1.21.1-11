@@ -46,5 +46,18 @@ Command List:
 Unauthorized modification or sale is prohibited.
 
 ---
+# Machine顧客
+・驚いたことに  
+・快適なユーティリティ  
+・よくやった  
+・完ぺきな無料  
+・いたずら無し  
 
+# 組み立てユニット
+・瞬時に枯れる  
+・適当な建築  
+・自動名前のタグ  
+・簡単を自動化  
+・スパムに抵抗  
+---
 Verified: mc 1.21.11 / fabric-loader 0.19.3 / FabricAPI 0.141.4
