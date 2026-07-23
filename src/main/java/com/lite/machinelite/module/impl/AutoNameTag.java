@@ -44,9 +44,9 @@ public class AutoNameTag extends Module {
 
             if (target != null) {
                 int tagSlot = (mc.player.getMainHandStack().getItem() == Items.NAME_TAG)
-                        ? mc.player.getInventory().selectedSlot
+                        ? mc.player.getInventory().getSelectedSlot()
                         : Utils.getItemSlotByToolBar(Items.NAME_TAG);
-                int lastSlot = mc.player.getInventory().selectedSlot;
+                int lastSlot = mc.player.getInventory().getSelectedSlot();
                 ItemStack currentItemStack = tagSlot != -1 ? mc.player.getInventory().getStack(tagSlot)
                         : ItemStack.EMPTY;
 
@@ -59,7 +59,7 @@ public class AutoNameTag extends Module {
                             (boundingBox.minZ + boundingBox.maxZ) / 2.0D);
                     float[] rotations = Utils.getNeededRotations(vec3d);
                     mc.getNetworkHandler().sendPacket(new PlayerMoveC2SPacket.LookAndOnGround(rotations[0],
-                            rotations[1], mc.player.isOnGround()));
+                            rotations[1], mc.player.isOnGround(), false));
                     ActionResult result = mc.interactionManager.interactEntity(mc.player, target, Hand.MAIN_HAND);
 
                     if (result.isAccepted()) {

@@ -41,8 +41,8 @@ public class BuildRandom extends Module {
             try {
                 boolean placed = false;
                 do {
-                    pos = BlockPos.ofFloored(mc.player.getPos()).add(random.nextInt(bound) - range,
-                            random.nextInt(bound) - range, random.nextInt(bound) - range);
+                    pos = BlockPos.ofFloored(mc.player.getX(), mc.player.getY(), mc.player.getZ()).add(
+                            random.nextInt(bound) - range, random.nextInt(bound) - range, random.nextInt(bound) - range);
                     placed = tryToPlaceBlock(range, pos);
                 } while (++attempts < 128 && timer.delay(80) && !placed);
 
@@ -53,9 +53,10 @@ public class BuildRandom extends Module {
     }
 
     private boolean tryToPlaceBlock(double reach, BlockPos pos) {
-        if (pos == null || !mc.world.getBlockState(pos).isReplaceable()) {
-            return false;
-        }
+        if (pos == null || !mc.world.getBlockState(pos).isReplaceable()) return false;
+
+        BlockPos playerFeet = mc.player.getBlockPos();
+        if (pos.equals(playerFeet) || pos.equals(playerFeet.up())) return false;
 
         if (Utils.placeBlock(reach, pos)) {
             timer.reset();

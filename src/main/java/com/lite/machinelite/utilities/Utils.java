@@ -5,23 +5,22 @@ import com.lite.machinelite.module.impl.AntiGhostBlock;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
-import net.minecraft.entity.Entity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.network.packet.c2s.play.*;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
+import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.RaycastContext;
-import net.minecraft.util.hit.HitResult;
 
 public class Utils implements IMC {
     public static void switchItem(int slot) {
-        if (mc.player.getInventory().selectedSlot != slot) {
-            mc.player.getInventory().selectedSlot = slot;
+        if (mc.player.getInventory().getSelectedSlot() != slot) {
+            mc.player.getInventory().setSelectedSlot(slot);
             mc.getNetworkHandler().sendPacket(new UpdateSelectedSlotC2SPacket(slot));
         }
     }
@@ -40,54 +39,72 @@ public class Utils implements IMC {
         return mc.player.getHorizontalFacing();
     }
 
-    public static boolean placeBlock(double reach, BlockPos pos) {
+    public static boolean placeBlock(double reach, BlockPos pos, boolean silentRotate) {
         Vec3d eyesPos = new Vec3d(mc.player.getX(), mc.player.getY() + mc.player.getEyeHeight(mc.player.getPose()),
                 mc.player.getZ());
         final Vec3d posVec = Vec3d.ofCenter(pos);
 
+        float[] targetRotations = null;
+        Vec3d targetHitVec = null;
+        Direction targetFacing = null;
+        BlockPos targetNeighbor = null;
+
         for (Direction facing : Direction.values()) {
             final BlockPos neighbor = pos.offset(facing);
-
             BlockState neighborState = mc.world.getBlockState(neighbor);
-            if (!neighborState.isReplaceable()) { // if we can place against it
+
+            if (!neighborState.isReplaceable()) {
                 final Vec3d dirVec = new Vec3d(facing.getOffsetX(), facing.getOffsetY(), facing.getOffsetZ());
                 final Vec3d hitVec = posVec.add(dirVec.multiply(0.5));
 
-                if (eyesPos.squaredDistanceTo(hitVec) <= Math.pow(6.0, 2.0)) {
+                if (eyesPos.squaredDistanceTo(hitVec) <= 36.0) {
                     float[] rotations = Utils.getNeededRotations(hitVec);
                     HitResult traceResult = Utils.rayTraceBlocks(reach, rotations[0], rotations[1]);
 
                     if (traceResult.getType() == HitResult.Type.BLOCK) {
-                        BlockHitResult blockHitResult = (BlockHitResult) traceResult;
-
-                        boolean needsSneak = isBlockContainer(neighborState.getBlock());
-                        if (needsSneak) {
-                            mc.getNetworkHandler().sendPacket(
-                                    new ClientCommandC2SPacket(mc.player, ClientCommandC2SPacket.Mode.PRESS_SHIFT_KEY));
-                        }
-
-                        BlockHitResult interactResult = new BlockHitResult(hitVec, facing.getOpposite(), neighbor,
-                                false);
-                        mc.interactionManager.interactBlock(mc.player, Hand.MAIN_HAND, interactResult);
-                        mc.getNetworkHandler().sendPacket(new HandSwingC2SPacket(Hand.MAIN_HAND));
-
-                        if (needsSneak) {
-                            mc.getNetworkHandler().sendPacket(new ClientCommandC2SPacket(mc.player,
-                                    ClientCommandC2SPacket.Mode.RELEASE_SHIFT_KEY));
-                        }
-
-                        if (MachineLite.getModuleManager().isEnabled(AntiGhostBlock.class)) {
-                            // Equivalent to CPacketPlayerTryUseItemOnBlock ghost block anti-sync in 1.12
-                            mc.getNetworkHandler()
-                                    .sendPacket(new PlayerInteractBlockC2SPacket(Hand.MAIN_HAND, interactResult, 0));
-                        }
-                        return true;
+                        targetRotations = rotations;
+                        targetHitVec = hitVec;
+                        targetFacing = facing;
+                        targetNeighbor = neighbor;
+                        break;
                     }
                 }
             }
         }
 
-        return false;
+        if (targetRotations == null) return false;
+
+        float prevYaw = mc.player.getYaw();
+        float prevPitch = mc.player.getPitch();
+
+        if (silentRotate) {
+            mc.getNetworkHandler().sendPacket(
+                new PlayerMoveC2SPacket.LookAndOnGround(targetRotations[0], targetRotations[1], mc.player.isOnGround(), false)
+            );
+            mc.player.setHeadYaw(targetRotations[0]);
+        }
+
+        BlockHitResult interactResult = new BlockHitResult(targetHitVec, targetFacing.getOpposite(), targetNeighbor, false);
+        mc.interactionManager.interactBlock(mc.player, Hand.MAIN_HAND, interactResult);
+        mc.getNetworkHandler().sendPacket(new HandSwingC2SPacket(Hand.MAIN_HAND));
+
+        if (MachineLite.getModuleManager().isEnabled(AntiGhostBlock.class)) {
+            mc.getNetworkHandler().sendPacket(
+                new PlayerInteractBlockC2SPacket(Hand.MAIN_HAND, interactResult, 0)
+            );
+        }
+
+        if (silentRotate) {
+            mc.getNetworkHandler().sendPacket(
+                new PlayerMoveC2SPacket.LookAndOnGround(prevYaw, prevPitch, mc.player.isOnGround(), false)
+            );
+        }
+
+        return true;
+    }
+
+    public static boolean placeBlock(double reach, BlockPos pos) {
+        return placeBlock(reach, pos, true);
     }
 
     public static float[] getNeededRotations(Vec3d vec) {
@@ -113,16 +130,15 @@ public class Utils implements IMC {
     }
 
     public static HitResult rayTraceBlocks(double reach, float yaw, float pitch) {
-        Vec3d vec3 = new Vec3d(mc.player.getX(), mc.player.getY() + mc.player.getEyeHeight(mc.player.getPose()),
+        Vec3d start = new Vec3d(mc.player.getX(), mc.player.getY() + mc.player.getEyeHeight(mc.player.getPose()),
                 mc.player.getZ());
-        Vec3d vec4 = Utils.getVectorForRotation(pitch, yaw);
-        Vec3d vec5 = vec3.add(vec4.x * reach, vec4.y * reach, vec4.z * reach);
-        return mc.player.getWorld().raycast(new RaycastContext(vec3, vec5, RaycastContext.ShapeType.OUTLINE,
+        Vec3d dir = Utils.getVectorForRotation(pitch, yaw);
+        Vec3d end = start.add(dir.x * reach, dir.y * reach, dir.z * reach);
+        return mc.world.raycast(new RaycastContext(start, end, RaycastContext.ShapeType.OUTLINE,
                 RaycastContext.FluidHandling.NONE, mc.player));
     }
 
     public static boolean isBlockContainer(Block block) {
-        // Broad check for containers/interactive blocks
         return block == Blocks.CHEST || block == Blocks.ENDER_CHEST || block == Blocks.TRAPPED_CHEST ||
                 block == Blocks.CRAFTING_TABLE || block == Blocks.FURNACE || block == Blocks.BLAST_FURNACE ||
                 block == Blocks.SMOKER || block == Blocks.ANVIL || block == Blocks.CHIPPED_ANVIL ||
@@ -137,7 +153,6 @@ public class Utils implements IMC {
 
         String name = net.minecraft.registry.Registries.ITEM.getId(stack.getItem()).getPath();
 
-        // Prevent using functional/gravity blocks for automated building
         if (name.contains("sign") || name.contains("egg") || name.contains("anvil") ||
                 name.contains("chest") || name.contains("shulker_box") || name.contains("bed") ||
                 name.contains("banner") || name.contains("door") || name.contains("button") ||
@@ -150,9 +165,6 @@ public class Utils implements IMC {
         }
 
         Block block = ((net.minecraft.item.BlockItem) stack.getItem()).getBlock();
-        if (isBlockContainer(block))
-            return false;
-
-        return true;
+        return !isBlockContainer(block);
     }
 }

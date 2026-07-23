@@ -32,6 +32,7 @@ public class InstantWither extends Module {
             return;
 
         if (event instanceof RightClickMouseEvent) {
+            if (mc.player == null || mc.world == null || mc.interactionManager == null) return;
             if (mc.crosshairTarget == null || mc.crosshairTarget.getType() != HitResult.Type.BLOCK || delay > 0) {
                 return;
             }
@@ -45,7 +46,7 @@ public class InstantWither extends Module {
             BlockPos startPos = blockHit.getBlockPos().offset(blockHit.getSide());
             Direction front = mc.player.getHorizontalFacing();
             Direction left = front.rotateYCounterclockwise();
-            lastSlot = mc.player.getInventory().selectedSlot;
+            lastSlot = mc.player.getInventory().getSelectedSlot();
             int[][] offset;
             byte b;
             int i;
@@ -83,7 +84,7 @@ public class InstantWither extends Module {
             Utils.switchItem(slot);
             Utils.placeBlock(4, pos);
             Utils.switchItem(lastSlot);
-            delay = 2; // Keep original functionality exactly as is
+            delay = 2;
         }
     }
 }

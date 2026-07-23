@@ -68,11 +68,11 @@ public class AntiMapBan extends Module {
     }
 
     public Map<String, MapDecoration> getMapDecorations(MapState mapState) {
+        Map<String, MapDecoration> decorations = ((IMixinMapData) mapState).getMapDecorations();
         if (MachineLite.getModuleManager().isEnabled(Debug.class)) {
-            MachineLite.WriteChat(String.format("MapInfo: [scale:%s, decorations:%s]", mapState.scale,
-                    this.getMapDecorations(mapState).size()));
+            MachineLite.WriteChat(String.format("MapInfo: [scale:%s, decorations:%s]",
+                    mapState.scale, decorations.size()));
         }
-
-        return ((IMixinMapData) mapState).getMapDecorations();
+        return decorations;
     }
 }

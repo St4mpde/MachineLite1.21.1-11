@@ -3,61 +3,36 @@ package com.lite.machinelite.module.impl;
 import com.lite.machinelite.event.Event;
 import com.lite.machinelite.event.impl.UpdateEvent;
 import com.lite.machinelite.module.Module;
-import com.lite.machinelite.utilities.TimerUtil;
 import com.lite.machinelite.utilities.Utils;
-import net.minecraft.item.BlockItem;
-import net.minecraft.item.ItemStack;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3d;
 
 public class FloorBuilder extends Module {
-    private final TimerUtil timer;
+    private static final int RANGE = 4;
+    private static final double REACH = 4.5;
 
     public FloorBuilder(String name, int keyCode) {
         super(name, keyCode);
-        timer = new TimerUtil();
     }
 
     @Override
     public void onEvent(Event event) {
-        if (!isEnabled())
-            return;
+        if (!isEnabled()) return;
+        if (!(event instanceof UpdateEvent u) || !u.isPost()) return;
+        if (mc.player == null || mc.world == null) return;
+        if (!Utils.isBuilderBlock(mc.player.getMainHandStack())) return;
 
-        if (event instanceof UpdateEvent) {
-            if (!checkHeldItem()) {
-                return;
-            }
+        BlockPos origin = BlockPos.ofFloored(mc.player.getX(), mc.player.getY() - 1, mc.player.getZ());
 
-            Vec3d vec3d = mc.player.getPos();
-            BlockPos originPos = BlockPos.ofFloored(vec3d.x, vec3d.y - 1, vec3d.z);
-            int posX = originPos.getX();
-            int posZ = originPos.getZ();
-            int range = 3;
-
-            for (int x = posX - range; x <= posX + range; x++) {
-                for (int z = posZ - range; z <= posZ + range; z++) {
-                    if (timer.delay(80)) {
-                        final BlockPos targetPos = new BlockPos(x, originPos.getY(), z);
-                        this.tryToPlaceBlock(range, targetPos);
+        for (int dist = 0; dist <= RANGE; dist++) {
+            for (int dx = -dist; dx <= dist; dx++) {
+                for (int dz = -dist; dz <= dist; dz++) {
+                    if (Math.abs(dx) != dist && Math.abs(dz) != dist) continue;
+                    BlockPos pos = origin.add(dx, 0, dz);
+                    if (mc.world.getBlockState(pos).isReplaceable() && Utils.placeBlock(REACH, pos)) {
+                        return;
                     }
                 }
             }
         }
-    }
-
-    private void tryToPlaceBlock(double reach, BlockPos pos) {
-        if (pos == null || !mc.world.getBlockState(pos).isReplaceable()) {
-            return;
-        }
-
-        if (Utils.placeBlock(reach, pos)) {
-            timer.reset();
-        }
-    }
-
-    private boolean checkHeldItem() {
-        if (mc.player == null)
-            return false;
-        return Utils.isBuilderBlock(mc.player.getMainHandStack());
     }
 }

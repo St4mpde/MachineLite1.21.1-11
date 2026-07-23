@@ -40,19 +40,17 @@ public class AutoHighway extends Module {
                     lastBlockItem = mainHand.getItem();
                 } else if (lastBlockItem != null) {
                     if (!refillBlocks()) {
-                        return; // Wait until blocks are found or just fail silently
+                        return;
                     }
-                    // Re-check after refill attempt
                     mainHand = mc.player.getMainHandStack();
                     if (!Utils.isBuilderBlock(mainHand)) {
                         return;
                     }
                 } else {
-                    return; // No blocks in hand and no last block
+                    return;
                 }
 
-                final Vec3d playerPos = mc.player.getPos();
-                BlockPos originPos = BlockPos.ofFloored(playerPos.x, playerPos.y + 0.5f, playerPos.z);
+                BlockPos originPos = BlockPos.ofFloored(mc.player.getX(), mc.player.getY() + 0.5, mc.player.getZ());
 
                 if (positions.isEmpty()) {
                     switch (Utils.getFacing()) {
@@ -124,9 +122,8 @@ public class AutoHighway extends Module {
         if (mc.player == null || mc.player.getInventory() == null)
             return false;
 
-        int hotbarSlot = mc.player.getInventory().selectedSlot;
+        int hotbarSlot = mc.player.getInventory().getSelectedSlot();
 
-        // Search hotbar first
         for (int i = 0; i < 9; i++) {
             if (i == hotbarSlot)
                 continue;
@@ -137,7 +134,6 @@ public class AutoHighway extends Module {
             }
         }
 
-        // Search main inventory
         for (int i = 9; i < 36; i++) {
             ItemStack stack = mc.player.getInventory().getStack(i);
             if (stack.getItem() == lastBlockItem) {

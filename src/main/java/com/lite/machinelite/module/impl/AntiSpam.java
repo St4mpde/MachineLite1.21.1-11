@@ -7,9 +7,17 @@ import net.minecraft.client.gui.hud.ChatHudLine;
 import net.minecraft.text.OrderedText;
 import net.minecraft.text.Text;
 
+import java.text.Normalizer;
 import java.util.List;
+import java.util.regex.Pattern;
 
 public class AntiSpam extends Module {
+    private static final float SIMILARITY_THRESHOLD = 0.80f;
+    private static final Pattern INVISIBLE_CHARS =
+        Pattern.compile("[\u200B\u200C\u200D\u00AD\uFEFF\u2060]");
+    private static final Pattern COUNTER_PATTERN =
+        Pattern.compile("(?i)\\s*(\u00A78)?\\s*\\[[×x]\\d+\\]$");
+
     public AntiSpam(String name, int keyCode) {
         super(name, keyCode);
     }
@@ -23,37 +31,42 @@ public class AntiSpam extends Module {
         return sb.toString();
     }
 
-    private String stripBypass(String text) {
-        // Strip out existing counters (e.g. " [x2]" or " §8[x2]")
-        return text.replaceAll("(?i)(\\s*\u00A78)?\\s*\\[x\\d+\\]$", "").trim();
+    private String normalize(String raw) {
+        String stripped = COUNTER_PATTERN.matcher(raw).replaceAll("").trim();
+        String noInvisible = INVISIBLE_CHARS.matcher(stripped).replaceAll("");
+        try {
+            return Normalizer.normalize(noInvisible, Normalizer.Form.NFKC).trim();
+        } catch (Exception e) {
+            return noInvisible.trim();
+        }
     }
 
-    private boolean isSpam(String oldText, String newText) {
-        if (oldText.equals(newText))
-            return true;
+    private boolean isSpam(String cleanOld, String cleanNew) {
+        if (cleanOld.equals(cleanNew)) return true;
 
-        // Extracting common prefixes to intelligently detect random suffix bypasses
-        int minLen = Math.min(oldText.length(), newText.length());
+        int len1 = cleanOld.length();
+        int len2 = cleanNew.length();
+
+        int minLen = Math.min(len1, len2);
         int commonPrefixLen = 0;
-        while (commonPrefixLen < minLen && oldText.charAt(commonPrefixLen) == newText.charAt(commonPrefixLen)) {
+        while (commonPrefixLen < minLen
+               && cleanOld.charAt(commonPrefixLen) == cleanNew.charAt(commonPrefixLen)) {
             commonPrefixLen++;
         }
-
         if (commonPrefixLen >= 10) {
-            String divergentOld = oldText.substring(commonPrefixLen);
-            String divergentNew = newText.substring(commonPrefixLen);
-
-            // Bypass suffixes are usually short and don't contain spaces (a single
-            // continuous random word)
-            if (divergentOld.length() <= 12 && divergentNew.length() <= 12) {
-                if (!divergentOld.contains(" ") && !divergentNew.contains(" ")) {
-                    // Safe assumptions for bypasses: It contains digits, or the common prefix is
-                    // extremely long
-                    if (commonPrefixLen >= 20 || (containsDigit(divergentOld) && containsDigit(divergentNew))) {
-                        return true;
-                    }
+            String tailOld = cleanOld.substring(commonPrefixLen);
+            String tailNew = cleanNew.substring(commonPrefixLen);
+            if (tailOld.length() <= 12 && tailNew.length() <= 12
+                    && !tailOld.contains(" ") && !tailNew.contains(" ")) {
+                if (commonPrefixLen >= 20 || (containsDigit(tailOld) && containsDigit(tailNew))) {
+                    return true;
                 }
             }
+        }
+
+        if (len1 >= 15 && len2 >= 15) {
+            float sim = similarity(cleanOld, cleanNew);
+            if (sim >= SIMILARITY_THRESHOLD) return true;
         }
 
         return false;
@@ -61,73 +74,73 @@ public class AntiSpam extends Module {
 
     private boolean containsDigit(String s) {
         for (char c : s.toCharArray()) {
-            if (Character.isDigit(c))
-                return true;
+            if (Character.isDigit(c)) return true;
         }
         return false;
     }
 
-    @Override
-    public void onEvent(Event event) {
-        if (!isEnabled())
-            return;
+    private float similarity(String a, String b) {
+        int maxLen = 128;
+        if (a.length() > maxLen) a = a.substring(0, maxLen);
+        if (b.length() > maxLen) b = b.substring(0, maxLen);
 
-        if (event instanceof ChatInputEvent chatEvent) {
-            try {
-                List<ChatHudLine.Visible> chatLines = chatEvent.getChatLines();
+        int lenA = a.length(), lenB = b.length();
+        int[] prev = new int[lenB + 1];
+        int[] curr = new int[lenB + 1];
 
-                if (!chatLines.isEmpty()) {
-                    String newRaw = chatEvent.getTextComponent().getString();
-                    String cleanNew = stripBypass(newRaw);
-
-                    if (cleanNew.isEmpty())
-                        return;
-
-                    int spamCounter = 1;
-
-                    // Match up to the last 50 lines to avoid excessive iteration
-                    int searchLimit = Math.max(0, chatLines.size() - 50);
-
-                    for (int i = chatLines.size() - 1; i >= searchLimit; --i) {
-                        String oldRaw = getStringFromOrderedText(chatLines.get(i).content());
-                        String cleanOld = stripBypass(oldRaw);
-
-                        if (isSpam(cleanOld, cleanNew)) {
-                            // Find out previous counter
-                            int oldCounter = 1;
-                            if (oldRaw.matches(".* \\[x\\d+\\]$") || oldRaw.matches(".* \u00A78\\[x\\d+\\]$")) {
-                                int bracketIndex = oldRaw.lastIndexOf("[x");
-                                if (bracketIndex != -1) {
-                                    String countStr = oldRaw.substring(bracketIndex + 2, oldRaw.length() - 1);
-                                    if (isInteger(countStr)) {
-                                        oldCounter = Integer.parseInt(countStr);
-                                    }
-                                }
-                            }
-                            spamCounter += oldCounter;
-                            chatLines.remove(i);
-                            break;
-                        }
-                    }
-
-                    if (spamCounter > 1) {
-                        chatEvent.setCancelled(true);
-                        // Modify the incoming event text to correctly append the counter and prevent
-                        // double processing
-                        chatEvent.setTextComponent(Text.literal(newRaw + " \u00A78[x" + spamCounter + "]"));
-                    }
-                }
-            } catch (Exception ignored) {
+        for (int j = 0; j <= lenB; j++) prev[j] = j;
+        for (int i = 1; i <= lenA; i++) {
+            curr[0] = i;
+            for (int j = 1; j <= lenB; j++) {
+                int cost = (a.charAt(i - 1) == b.charAt(j - 1)) ? 0 : 1;
+                curr[j] = Math.min(Math.min(curr[j - 1] + 1, prev[j] + 1), prev[j - 1] + cost);
             }
+            int[] tmp = prev; prev = curr; curr = tmp;
         }
+        int dist = prev[lenB];
+        return 1.0f - (float) dist / Math.max(lenA, lenB);
     }
 
-    public static boolean isInteger(String s) {
+    @Override
+    public void onEvent(Event event) {
+        if (!isEnabled()) return;
+        if (!(event instanceof ChatInputEvent chatEvent)) return;
+
         try {
-            Integer.parseInt(s);
-            return true;
-        } catch (NumberFormatException e) {
-            return false;
-        }
+            List<ChatHudLine.Visible> chatLines = chatEvent.getChatLines();
+            if (chatLines.isEmpty()) return;
+
+            String newRaw = chatEvent.getTextComponent().getString();
+            String cleanNew = normalize(newRaw);
+            if (cleanNew.isEmpty()) return;
+
+            int spamCounter = 1;
+            int searchLimit = Math.max(0, chatLines.size() - 50);
+
+            for (int i = chatLines.size() - 1; i >= searchLimit; --i) {
+                String oldRaw = getStringFromOrderedText(chatLines.get(i).content());
+                String cleanOld = normalize(oldRaw);
+
+                if (isSpam(cleanOld, cleanNew)) {
+                    java.util.regex.Matcher m =
+                        Pattern.compile("\\[[×x](\\d+)\\]$").matcher(oldRaw);
+                    if (m.find()) {
+                        try { spamCounter += Integer.parseInt(m.group(1)); }
+                        catch (NumberFormatException ignored) { spamCounter++; }
+                    } else {
+                        spamCounter++;
+                    }
+                    chatLines.remove(i);
+                    break;
+                }
+            }
+
+            if (spamCounter > 1) {
+                chatEvent.setCancelled(true);
+                chatEvent.setTextComponent(
+                    Text.literal(newRaw + " \u00A78[\u00D7" + spamCounter + "]")
+                );
+            }
+        } catch (Exception ignored) {}
     }
 }

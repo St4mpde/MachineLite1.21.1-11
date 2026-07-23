@@ -21,8 +21,11 @@ public class ModuleManager {
         registerModule(new AntiGhostBlock("AntiGhostBlock", 0));
         registerModule(new FloorBuilder("FloorBuilder", 0));
         registerModule(new AntiMapBan("AntiMapBan", 0));
-
         registerModule(new Debug("Debug", 0));
+        registerModule(new NoFall("NoFall", 0));
+        registerModule(new Blink("Blink", 0));
+        registerModule(new ElytraBoost("ElytraBoost", 0));
+        registerModule(new ElytraDash("ElytraDash", 0));
     }
 
     private void registerModule(Module module) {

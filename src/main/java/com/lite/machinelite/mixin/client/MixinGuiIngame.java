@@ -14,7 +14,7 @@ public class MixinGuiIngame {
     @Inject(method = "renderMainHud", at = @At("RETURN"))
     private void renderMainHud(DrawContext context, RenderTickCounter tickCounter, CallbackInfo callbackInfo) {
         RenderOverlayEvent renderOverlayEvent = new RenderOverlayEvent();
-        renderOverlayEvent.fire(context, tickCounter.getTickDelta(true)).call();
+        renderOverlayEvent.fire(context, tickCounter.getTickProgress(true)).call();
     }
 }
 

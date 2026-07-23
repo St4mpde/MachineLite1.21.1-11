@@ -3,10 +3,10 @@
   "id": "lite",
   "version": "${version}",
   "name": "MachineLite",
-  "description": "Port of the MachineLite 1.12.2 client to Fabric 1.21.1",
+  "description": "MachineLite 1.21.11",
   "authors": [
     "YOSSHIXD",
-    "Ported by Assistant"
+    "St4mpde"
   ],
   "contact": {
     "repo": "https://github.com/YOSSHIXD/MachineLite"
@@ -23,8 +23,8 @@
     "machinelite.mixins.json"
   ],
   "depends": {
-    "fabricloader": ">=0.16.5",
-    "minecraft": "~1.21.1",
+    "fabricloader": ">=0.19.3",
+    "minecraft": "~1.21.11",
     "java": ">=21"
   }
 }

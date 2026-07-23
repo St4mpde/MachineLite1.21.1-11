@@ -1,50 +1,50 @@
-# MachineLite [![GitHub All Releases](https://img.shields.io/github/downloads/34663/MachineLite/total)](https://github.com/34663/MachineLite/releases) [![Discord Mine](https://img.shields.io/discord/820155363268624415?label=Discord&logo=discord&logoColor=white)](https://discord.gg/2smsjav2jd) [![minecraft](https://img.shields.io/badge/Minecraft-1.12.2-blueviolet.svg)](https://www.minecraft.net/ja-jp/article/minecraft-1122-released)
+# MachineLite [![GitHub All Releases](https://img.shields.io/github/downloads/St4mpde/MachineLite1.21.1/total)](https://github.com/St4mpde/MachineLite1.21.1/releases) [![minecraft](https://img.shields.io/badge/Minecraft-1.21.11-blueviolet.svg)](https://www.minecraft.net/)
+
 MachineLite was developed as a subclient for trolling on 2b2tjp and other servers.
+
 # Installation
-Just download the latest Jar from the release and put it in your mods folder!
+
+Download the latest jar from releases and drop it in your mods folder.
+
+Requires: Fabric Loader 0.19+, Fabric API
+
 # How to use
-There is no GUI, and the system is operated by commands.  
-The command prefix is ’ . ’  
-  
+
+No GUI. Operated via chat commands. Default prefix is `.`
+
 Module List:
 ```
-・BuildRandom
-・FloorBuilder
-・InstantWither
-・AntiSpam
-・AutoSign
-・AutoHighway
-・AutoNameTag
-・AntiGhostBlock
-・AntiMapBan
+· BuildRandom
+· FloorBuilder
+· InstantWither
+· AutoHighway
+· AutoSign
+· AutoNameTag
+· AntiSpam
+· AntiGhostBlock
+· AntiMapBan
+· Blink
+· ElytraDash
+· ElytraBoost
+· NoFall
 ```
 
 Command List:
 ```
-・help
-・bind
-・toggle
-・modulelist
-・clearsigntext
+· help
+· bind <Module> <Key>
+· bind command <prefix>
+· toggle <Module>
+· modulelist
+· clearsigntext
 ```
-  
-# Warning!
+
+`bind command` changes the command prefix. Example: `.bind command !` switches prefix to `!`.
+
+# Warning
+
 Unauthorized modification or sale is prohibited.
 
-# Machine顧客
-・驚いたことに  
-・快適なユーティリティ  
-・よくやった  
-・完ぺきな無料  
-・いたずら無し  
-
-# 組み立てユニット
-・瞬時に枯れる  
-・適当な建築  
-・自動名前のタグ  
-・簡単を自動化  
-・スパムに抵抗  
 ---
-#大体の機能は完成しました。ただantispamとantighostblockがややゴミ仕様、プルリク/Issuesが来たら対応
 
-### 検証環境 mcver-1.21.1 fabric-0.16.5 使用クライアントRusher hack,Futuer,meteor(+blackout) 使用mod/FabricAPI,sodium,Lithium
+Verified: mc 1.21.11 / fabric-loader 0.19.3 / FabricAPI 0.141.4

@@ -5,6 +5,7 @@
     "mixins": [],
     "client": [
         "client.IMixinMapData",
+        "client.IMixinPlayerMovePacket",
         "client.MixinEntityPlayerSP",
         "client.MixinGuiEditSign",
         "client.MixinGuiIngame",

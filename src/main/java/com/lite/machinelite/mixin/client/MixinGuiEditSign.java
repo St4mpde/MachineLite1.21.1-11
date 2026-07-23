@@ -37,7 +37,6 @@ public class MixinGuiEditSign {
                 this.messages[2] = signText[2].getString();
                 this.messages[3] = signText[3].getString();
 
-                // In 1.21.1, sending the update packet manually is safer when closing early
                 net.minecraft.network.packet.c2s.play.UpdateSignC2SPacket packet = new net.minecraft.network.packet.c2s.play.UpdateSignC2SPacket(
                         this.blockEntity.getPos(), this.front,
                         this.messages[0], this.messages[1], this.messages[2], this.messages[3]);
